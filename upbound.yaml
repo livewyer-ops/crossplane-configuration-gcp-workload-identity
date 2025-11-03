@@ -4,14 +4,18 @@ metadata:
   name: crossplane-configuration-gcp-workload-identity
 spec:
   dependsOn:
-  - apiVersion: pkg.crossplane.io/v1
-    kind: Function
-    package: xpkg.upbound.io/crossplane-contrib/function-auto-ready
-    version: '>=v0.0.0'
+    - provider: xpkg.upbound.io/upbound/provider-family-gcp
+      version: ">=v2.2.0"
+    - provider: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
+      version: ">=v1"
+    - function: xpkg.upbound.io/upbound/function-go-templating
+      version: ">=v0.11.0"
+    - function: xpkg.upbound.io/upbound/function-auto-ready
+      version: ">=v0.5.0"
   description: This is where you can describe your project.
-  license: Apache-2.0
-  maintainer: Upbound User <user@example.com>
+  license: MIT License
+  maintainer: Livewyer <bowen@livewyer.com>
   readme: |
     This is where you can add a readme for your project.
-  repository: xpkg.upbound.io/nusnewob/crossplane-configuration-gcp-workload-identity
-  source: github.com/upbound/project-template-scratch
+  repository: xpkg.upbound.io/livewyer-ops/crossplane-configuration-gcp-workload-identity
+  source: github.com/livewyer-ops/crossplane-configuration-gcp-workload-identity

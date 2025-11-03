@@ -1,17 +1,13 @@
-apiVersion: apiextensions.crossplane.io/v1
+apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xcfgresources.cfg.example.org
+  name: workloadidentities.gcp.livewyer.io
 spec:
-  group: cfg.example.org
+  scope: Namespaced
+  group: gcp.livewyer.io
   names:
-    kind: XCfgResource
-    plural: xcfgresources
-  claimNames:
-    kind: CfgResource
-    plural: cfgresources
-  connectionSecretKeys:
-    - test
+    kind: WorkloadIdentity
+    plural: workloadidentities
   versions:
     - name: v1alpha1
       served: true
@@ -19,11 +15,101 @@ spec:
       schema:
         openAPIV3Schema:
           type: object
+          required:
+            - spec
           properties:
             spec:
               type: object
-              properties:
-                data:
-                  type: string
+              description: "WorkloadIdentitySpec defines the desired state of WorkloadIdentity"
+              x-kubernetes-preserve-unknown-fields: true #TODO: delete
               required:
-                - data
+                - forProvider
+              properties:
+                forProvider:
+                  type: object
+                  required:
+                    - projectId
+                    - roles
+                  description: "ForProvider specifies the parameters for configuring the Azure workload identity resources"
+                  properties:
+                    location:
+                      type: string
+                      description: "Cluster location (region if regional cluster, zone if zonal cluster). Required if using existing Service Account."
+                    projectId:
+                      type: string
+                      description: "GCP project ID where the resources will be created"
+                    roles:
+                      type: array
+                      description: "List of GCP roles to grant to the workload identity"
+                      items:
+                        type: string
+                        description: "A list of roles to be added to the created service account"
+                    additionalProjects:
+                      type: object
+                      description: "A list of roles to be added to the created service account for additional projects"
+                      properties:
+                        projectId:
+                          type: string
+                          description: "GCP project ID where the resources will be created"
+                        roles:
+                          type: array
+                          items:
+                            type: string
+                            description: "A list of roles to be added to the created service account"
+                    serviceAccountName:
+                      type: string
+                      description: "Kubernetes Service Account name to create"
+                    serviceAccountNamespace:
+                      type: string
+                      description: "Kubernetes Namespace the Service Account will be created in, override the namepace set for this namespaced XRD"
+                    automountServiceAccountToken:
+                      type: boolean
+                      default: true
+                      description: "Enable automatic mounting of the service account token"
+                providerConfigRef:
+                  type: object
+                  description: "ProviderConfigReference specifies how the provider that will be used to create, observe, update, and delete this managed resource should be configured"
+                  properties:
+                    kind:
+                      type: string
+                      description: "Kind of the provider config reference (e.g., ProviderConfig)"
+                    name:
+                      type: string
+                      description: "Name of the provider config to use"
+                  required:
+                    - kind
+                    - name
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      message:
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - reason
+                      - status
+                      - type
+                connectionDetails:
+                  type: object
+                  properties:
+                    lastPublishedTime:
+                      type: string
+                      format: date-time
+                atProvider:
+                  type: object
+                  description: "Porvider state."
+                  x-kubernetes-preserve-unknown-fields: true

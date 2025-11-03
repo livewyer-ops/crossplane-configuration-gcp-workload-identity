@@ -1,32 +1,220 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: cfg-composition
+  name: workloadidentities.gcp.livewyer.io
 spec:
   compositeTypeRef:
-    apiVersion: cfg.example.org/v1alpha1
-    kind: XCfgResource
+    apiVersion: gcp.livewyer.io/v1alpha1
+    kind: WorkloadIdentity
   mode: Pipeline
   pipeline:
-    - step: patch-and-transform
+    - step: go-templating
       functionRef:
-        name: crossplane-contrib-function-patch-and-transform
+        name: upbound-function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: resource-0
-            base:
-              apiVersion: kubernetes.crossplane.io/v1alpha2
-              kind: Object
-              spec:
-                forProvider:
-                  manifest:
-                    apiVersion: v1
-                    kind: ConfigMap
-                    metadata:
-                      namespace: default
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.data
-                toFieldPath: spec.forProvider.manifest.data.sample-key
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $id := $.observed.composite.resource.metadata.name }}
+            {{- $ns := default "default" $.observed.composite.resource.metadata.namespace }}
+            {{- $annotations := default (dict) $.observed.composite.resource.metadata.annotations }}
+            {{- $labels := default (dict) $.observed.composite.resource.metadata.labels }}
+            {{- $spec := $.observed.composite.resource.spec }}
+
+            ---
+
+            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $id }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "serviceaccount.workloadidentity.gcp.livewyer.io/%s" $id) }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/serviceaccount: {{ $id }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              {{- if $spec.providerConfigRef }}
+              providerConfigRef: {{ toJson $spec.providerConfigRef }}
+              {{- end }}
+              {{- if $spec.deletionPolicy }}
+              deletionPolicy: {{ $spec.deletionPolicy }}
+              {{- end }}
+              {{- if $spec.managementPolicies }}
+              managementPolicies: {{ toJson $spec.managementPolicies }}
+              {{- end }}
+              {{- if $spec.publishConnectionDetailsTo }}
+              publishConnectionDetailsTo: {{ toJson $spec.publishConnectionDetailsTo }}
+              {{- end }}
+              {{- if $spec.writeConnectionSecretsToNamespace }}
+              writeConnectionSecretsToNamespace: {{ $spec.writeConnectionSecretsToNamespace }}
+              {{- end }}
+              forProvider:
+                name: {{ $id }}
+                displayName: {{ $id }}
+                project: {{ $spec.forProvider.projectId }}
+                createIgnoreAlreadyExists: true
+
+            ---
+
+            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
+            kind: ServiceAccountIAMMember
+            metadata:
+              name: {{ $id }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "serviceaccountiammember.workloadidentity.gcp.livewyer.io/%s" $id) }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/serviceaccountiammember: {{ $id }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              {{- if $spec.providerConfigRef }}
+              providerConfigRef: {{ toJson $spec.providerConfigRef }}
+              {{- end }}
+              {{- if $spec.deletionPolicy }}
+              deletionPolicy: {{ $spec.deletionPolicy }}
+              {{- end }}
+              {{- if $spec.managementPolicies }}
+              managementPolicies: {{ toJson $spec.managementPolicies }}
+              {{- end }}
+              {{- if $spec.publishConnectionDetailsTo }}
+              publishConnectionDetailsTo: {{ toJson $spec.publishConnectionDetailsTo }}
+              {{- end }}
+              {{- if $spec.writeConnectionSecretsToNamespace }}
+              writeConnectionSecretsToNamespace: {{ $spec.writeConnectionSecretsToNamespace }}
+              {{- end }}
+              forProvider:
+                role: roles/iam.workloadIdentityUser
+                member: {{ printf "serviceAccount:%s.svc.id.goog[%s/%s]" $spec.forProvider.projectId $ns $id }}
+                serviceAccountIdRef:
+                  name: {{ $id }}
+                  namespace: {{ $ns }}
+
+            ---
+            {{- range $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+            {{- range $i, $role := (index $projectRoles "roles") }}
+            {{- $roleId := printf "%s-role-%s-%d" $id (camelcase (index $projectRoles "projectId")) $i }}
+
+            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
+            kind: ProjectIAMMember
+            metadata:
+              name: {{ $roleId }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "projectiammember.workloadidentity.gcp.livewyer.io/%s" $roleId) }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/projectiammember: {{ $roleId }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              {{- if $spec.providerConfigRef }}
+              providerConfigRef: {{ toJson $spec.providerConfigRef }}
+              {{- end }}
+              {{- if $spec.deletionPolicy }}
+              deletionPolicy: {{ $spec.deletionPolicy }}
+              {{- end }}
+              {{- if $spec.managementPolicies }}
+              managementPolicies: {{ toJson $spec.managementPolicies }}
+              {{- end }}
+              {{- if $spec.publishConnectionDetailsTo }}
+              publishConnectionDetailsTo: {{ toJson $spec.publishConnectionDetailsTo }}
+              {{- end }}
+              {{- if $spec.writeConnectionSecretsToNamespace }}
+              writeConnectionSecretsToNamespace: {{ $spec.writeConnectionSecretsToNamespace }}
+              {{- end }}
+              forProvider:
+                project: {{ index $projectRoles "projectId" }}
+                role: {{ $role }}
+                member: {{ printf "serviceAccount:%s.svc.id.goog[%s/%s]" $spec.forProvider.projectId $ns $id }}
+
+            ---
+            {{- end }}
+            {{- end }}
+            {{- if $spec.forProvider.serviceAccountName }}
+            ---
+
+            apiVersion: kubernetes.m.crossplane.io/v1alpha1
+            kind: Object
+            metadata:
+              name: {{ $spec.forProvider.serviceAccountName }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "serviceaccount.workloadidentity.k8s.livewyer.io/%s" $spec.forProvider.serviceAccountName) }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/serviceaccount: {{ $spec.forProvider.serviceAccountName }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              forProvider:
+                manifest:
+                  apiVersion: v1
+                  kind: ServiceAccount
+                  metadata:
+                    name: {{ $spec.forProvider.serviceAccountName }}
+                    namespace: {{ $ns }}
+                    annotations:
+                      iam.gke.io/gcp-service-account: {{ $id }}
+                      {{- range $key, $value := $annotations }}
+                      {{ $key }}: "{{ $value }}"
+                      {{- end }}
+                    labels:
+                      gcp.livewyer.io/workloadidentity: {{ $id }}
+                      workloadidentity.gcp.livewyer.io/serviceaccount: {{ $spec.forProvider.serviceAccountName }}
+                      iam.gke.io/gcp-service-account: {{ $id }}
+                      {{- range $key, $value := $labels }}
+                      {{ $key }}: "{{ $value }}"
+                      {{- end }}
+                  automountServiceAccountToken: {{ default true $spec.forProvider.automountServiceAccountToken }}
+
+            ---
+            {{- end }}
+            ---
+
+            apiVersion: {{ .observed.composite.resource.apiVersion }}
+            kind: {{ .observed.composite.resource.kind }}
+            metadata:
+              name: {{ $id }}
+              namespace: {{ $ns }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+            status:
+              atProvider:
+                serviceAccount: {{ dig "resources" (printf "serviceaccount.workloadidentity.azure.livewyer.io/%s" $id) "resource" "status" "atProvider" (dict) $.observed }}
+                serviceAccountIamMember: {{ dig "resources" (printf "serviceaccountiammember.workloadidentity.azure.livewyer.io/%s" $id) "resource" "status" "atProvider" (dict) $.observed }}
+                roles:
+                  {{- range $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+                  {{- range $i, $role := (index $projectRoles "roles") }}
+                  {{- $roleId := printf "%s-role-%s-%d" $id (camelcase (index $projectRoles "projectId")) $i }}
+                  -  {{ $roleId }}: {{ dig "resources" (printf "projectiammember.workloadidentity.azure.livewyer.io/%s" $roleId) "resource" "status" "atProvider" (dict) $.observed }}
+                  {{- end }}
+                  {{- end }}
+
+            ---
+
+    - step: automatically-detect-ready-composed-resources
+      functionRef:
+        name: upbound-function-auto-ready
