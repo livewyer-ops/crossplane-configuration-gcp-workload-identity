@@ -45,17 +45,19 @@ spec:
                         type: string
                         description: "A list of roles to be added to the created service account"
                     additionalProjects:
-                      type: object
+                      type: array
                       description: "A list of roles to be added to the created service account for additional projects"
-                      properties:
-                        projectId:
-                          type: string
-                          description: "GCP project ID where the resources will be created"
-                        roles:
-                          type: array
-                          items:
+                      items:
+                        type: object
+                        properties:
+                          projectId:
                             type: string
-                            description: "A list of roles to be added to the created service account"
+                            description: "GCP project ID where the resources will be created"
+                          roles:
+                            type: array
+                            items:
+                              type: string
+                              description: "A list of roles to be added to the created service account"
                     serviceAccountName:
                       type: string
                       description: "Kubernetes Service Account name to create"

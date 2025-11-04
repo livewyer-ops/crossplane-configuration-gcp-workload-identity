@@ -58,7 +58,6 @@ spec:
               writeConnectionSecretsToNamespace: {{ $spec.writeConnectionSecretsToNamespace }}
               {{- end }}
               forProvider:
-                name: {{ $id }}
                 displayName: {{ $id }}
                 project: {{ $spec.forProvider.projectId }}
                 createIgnoreAlreadyExists: true
@@ -105,9 +104,9 @@ spec:
                   namespace: {{ $ns }}
 
             ---
-            {{- range $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
-            {{- range $i, $role := (index $projectRoles "roles") }}
-            {{- $roleId := printf "%s-role-%s-%d" $id (camelcase (index $projectRoles "projectId")) $i }}
+            {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+            {{- range $role := (index $projectRoles "roles") }}
+            {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
 
             apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
             kind: ProjectIAMMember
@@ -203,13 +202,13 @@ spec:
                 gcp.livewyer.io/workloadidentity: {{ $id }}
             status:
               atProvider:
-                serviceAccount: {{ dig "resources" (printf "serviceaccount.workloadidentity.azure.livewyer.io/%s" $id) "resource" "status" "atProvider" (dict) $.observed }}
-                serviceAccountIamMember: {{ dig "resources" (printf "serviceaccountiammember.workloadidentity.azure.livewyer.io/%s" $id) "resource" "status" "atProvider" (dict) $.observed }}
+                serviceAccount: {{ toJson (getComposedResource . (printf "serviceaccount.workloadidentity.gcp.livewyer.io/%s" $id)).status.atProvider }}
+                serviceAccountIamMember: {{ toJson (getComposedResource . (printf "serviceaccountiammember.workloadidentity.gcp.livewyer.io/%s" $id)).status.atProvider }}
                 roles:
-                  {{- range $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
-                  {{- range $i, $role := (index $projectRoles "roles") }}
-                  {{- $roleId := printf "%s-role-%s-%d" $id (camelcase (index $projectRoles "projectId")) $i }}
-                  -  {{ $roleId }}: {{ dig "resources" (printf "projectiammember.workloadidentity.azure.livewyer.io/%s" $roleId) "resource" "status" "atProvider" (dict) $.observed }}
+                  {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+                  {{- range $role := (index $projectRoles "roles") }}
+                  {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
+                  -  {{ $roleId }}: {{ toJson (dig "resources" (printf "projectiammember.workloadidentity.gcp.livewyer.io/%s" $roleId) "resource" "status" "atProvider" (dict) $.observed) }}
                   {{- end }}
                   {{- end }}
 

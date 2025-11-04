@@ -2,7 +2,7 @@ apiVersion: gcp.livewyer.io/v1alpha1
 kind: WorkloadIdentity
 metadata:
   name: simple-example
-  namespace: test
+  namespace: default
   annotations:
     crossplane.io/composition-resource-name: workloadidentity.gcp.livewyer.io/simple-example
     test-annotation: "true"
@@ -16,8 +16,11 @@ spec:
       - roles/dns.admin
       - roles/compute.admin
     additionalProjects:
-      - projectId: provider-testing2
+      - projectId: provider-testing
         roles:
-          - roles/dns.admin
+          - roles/container.admin
           - roles/storage.admin
+      - projectId: provider-testing
+        roles:
+          - roles/cloudsql.admin
     serviceAccountName: simple-example
