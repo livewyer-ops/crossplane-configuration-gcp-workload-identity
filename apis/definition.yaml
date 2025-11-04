@@ -32,9 +32,6 @@ spec:
                     - roles
                   description: "ForProvider specifies the parameters for configuring the Azure workload identity resources"
                   properties:
-                    location:
-                      type: string
-                      description: "Cluster location (region if regional cluster, zone if zonal cluster). Required if using existing Service Account."
                     projectId:
                       type: string
                       description: "GCP project ID where the resources will be created"
