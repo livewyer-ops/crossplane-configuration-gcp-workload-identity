@@ -174,7 +174,7 @@ spec:
                   kind: ServiceAccount
                   metadata:
                     name: {{ $spec.forProvider.serviceAccountName }}
-                    namespace: {{ $ns }}
+                    namespace: {{ default $ns $spec.forProvider.serviceAccountNamespace }}
                     annotations:
                       iam.gke.io/gcp-service-account: {{ $id }}
                       {{- range $key, $value := $annotations }}
