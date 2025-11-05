@@ -104,7 +104,7 @@ spec:
                   namespace: {{ $ns }}
 
             ---
-            {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+            {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) (default (list) $spec.forProvider.additionalProjects)) }}
             {{- range $role := (index $projectRoles "roles") }}
             {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
 
@@ -205,7 +205,7 @@ spec:
                 serviceAccount: {{ toJson (getComposedResource . (printf "serviceaccount.workloadidentity.gcp.livewyer.io/%s" $id)).status.atProvider }}
                 serviceAccountIamMember: {{ toJson (getComposedResource . (printf "serviceaccountiammember.workloadidentity.gcp.livewyer.io/%s" $id)).status.atProvider }}
                 roles:
-                  {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) $spec.forProvider.additionalProjects) }}
+                  {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) (default (list) $spec.forProvider.additionalProjects)) }}
                   {{- range $role := (index $projectRoles "roles") }}
                   {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
                   -  {{ $roleId }}: {{ toJson (dig "resources" (printf "projectiammember.workloadidentity.gcp.livewyer.io/%s" $roleId) "resource" "status" "atProvider" (dict) $.observed) }}
