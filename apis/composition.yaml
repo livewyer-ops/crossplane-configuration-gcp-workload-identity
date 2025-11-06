@@ -109,6 +109,30 @@ spec:
             {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
 
             apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
+            kind: Project
+            metadata:
+              name: {{ index $projectRoles "projectId" }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "project.workloadidentity.gcp.livewyer.io/%s" (index $projectRoles "projectId")) }}
+                crossplane.io/external-name: {{ index $projectRoles "projectId" }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/project: {{ index $projectRoles "projectId" }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              managementPolicies: ["Observe"]
+              forProvider:
+                projectId: {{ index $projectRoles "projectId" }}
+
+            ---
+
+            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
             kind: ProjectIAMMember
             metadata:
               name: {{ $roleId }}
@@ -143,7 +167,7 @@ spec:
               forProvider:
                 project: {{ index $projectRoles "projectId" }}
                 role: {{ $role }}
-                member: {{ printf "serviceAccount:%s.svc.id.goog[%s/%s]" $spec.forProvider.projectId $ns $id }}
+                member: {{ printf "principal://iam.googleapis.com/projects/%s/locations/global/workloadIdentityPools/%s.svc.id.goog/subject/ns/%s/sa/%s" (dig "resources" (printf "project.workloadidentity.gcp.livewyer.io/%s" (index $projectRoles "projectId")) "resource" "status" "atProvider" "number" "" $.observed) (index $projectRoles "projectId") (default $ns $spec.forProvider.serviceAccountNamespace) (default $id $spec.forProvider.serviceAccountName) }}
 
             ---
             {{- end }}
