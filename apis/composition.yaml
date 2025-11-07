@@ -106,7 +106,7 @@ spec:
             ---
             {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) (default (list) $spec.forProvider.additionalProjects)) }}
             {{- range $role := (index $projectRoles "roles") }}
-            {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
+            {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (lower (trimPrefix "roles/" $role)) }}
 
             apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
             kind: Project
@@ -231,7 +231,7 @@ spec:
                 roles:
                   {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) (default (list) $spec.forProvider.additionalProjects)) }}
                   {{- range $role := (index $projectRoles "roles") }}
-                  {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (trimPrefix "roles/" $role) }}
+                  {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (lower (trimPrefix "roles/" $role)) }}
                   -  {{ $roleId }}: {{ toJson (dig "resources" (printf "projectiammember.workloadidentity.gcp.livewyer.io/%s" $roleId) "resource" "status" "atProvider" (dict) $.observed) }}
                   {{- end }}
                   {{- end }}
