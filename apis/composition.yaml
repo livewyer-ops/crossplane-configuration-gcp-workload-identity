@@ -65,6 +65,30 @@ spec:
             ---
 
             apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
+            kind: Project
+            metadata:
+              name: {{ $id }}
+              namespace: {{ $ns }}
+              annotations:
+                {{ setResourceNameAnnotation (printf "project.workloadidentity.gcp.livewyer.io/%s" $spec.forProvider.projectId) }}
+                crossplane.io/external-name: {{ $spec.forProvider.projectId }}
+                {{- range $key, $value := $annotations }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+              labels:
+                gcp.livewyer.io/workloadidentity: {{ $id }}
+                workloadidentity.gcp.livewyer.io/project: {{ $spec.forProvider.projectId }}
+                {{- range $key, $value := $labels }}
+                {{ $key }}: "{{ $value }}"
+                {{- end }}
+            spec:
+              managementPolicies: ["Observe"]
+              forProvider:
+                projectId: {{ $spec.forProvider.projectId }}
+
+            ---
+
+            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
             kind: ServiceAccountIAMMember
             metadata:
               name: {{ $id }}
@@ -97,39 +121,16 @@ spec:
               writeConnectionSecretsToNamespace: {{ $spec.writeConnectionSecretsToNamespace }}
               {{- end }}
               forProvider:
-                role: roles/iam.workloadIdentityUser
-                member: {{ printf "serviceAccount:%s.svc.id.goog[%s/%s]" $spec.forProvider.projectId $ns $id }}
                 serviceAccountIdRef:
                   name: {{ $id }}
                   namespace: {{ $ns }}
+                role: roles/iam.workloadIdentityUser
+                member: {{ printf "principal://iam.googleapis.com/projects/%s/locations/global/workloadIdentityPools/%s.svc.id.goog/subject/ns/%s/sa/%s" (dig "resources" (printf "project.workloadidentity.gcp.livewyer.io/%s" $spec.forProvider.projectId) "resource" "status" "atProvider" "number" "" $.observed) $spec.forProvider.projectId (default $ns $spec.forProvider.serviceAccountNamespace) (default $id $spec.forProvider.serviceAccountName) }}
 
             ---
             {{- range $i, $projectRoles := (concat (list (dict "projectId" $spec.forProvider.projectId "roles" $spec.forProvider.roles)) (default (list) $spec.forProvider.additionalProjects)) }}
             {{- range $role := (index $projectRoles "roles") }}
             {{- $roleId := printf "%s-%d-%s-%s" $id $i (lower (index $projectRoles "projectId")) (lower (trimPrefix "roles/" $role)) }}
-
-            apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
-            kind: Project
-            metadata:
-              name: {{ index $projectRoles "projectId" }}
-              namespace: {{ $ns }}
-              annotations:
-                {{ setResourceNameAnnotation (printf "project.workloadidentity.gcp.livewyer.io/%s" (index $projectRoles "projectId")) }}
-                crossplane.io/external-name: {{ index $projectRoles "projectId" }}
-                {{- range $key, $value := $annotations }}
-                {{ $key }}: "{{ $value }}"
-                {{- end }}
-              labels:
-                gcp.livewyer.io/workloadidentity: {{ $id }}
-                workloadidentity.gcp.livewyer.io/project: {{ index $projectRoles "projectId" }}
-                {{- range $key, $value := $labels }}
-                {{ $key }}: "{{ $value }}"
-                {{- end }}
-            spec:
-              managementPolicies: ["Observe"]
-              forProvider:
-                projectId: {{ index $projectRoles "projectId" }}
-
             ---
 
             apiVersion: cloudplatform.gcp.m.upbound.io/v1beta1
@@ -167,7 +168,7 @@ spec:
               forProvider:
                 project: {{ index $projectRoles "projectId" }}
                 role: {{ $role }}
-                member: {{ printf "principal://iam.googleapis.com/projects/%s/locations/global/workloadIdentityPools/%s.svc.id.goog/subject/ns/%s/sa/%s" (dig "resources" (printf "project.workloadidentity.gcp.livewyer.io/%s" (index $projectRoles "projectId")) "resource" "status" "atProvider" "number" "" $.observed) (index $projectRoles "projectId") (default $ns $spec.forProvider.serviceAccountNamespace) (default $id $spec.forProvider.serviceAccountName) }}
+                member: {{ printf "serviceAccount:%s@%s.iam.gserviceaccount.com" $id $spec.forProvider.projectId }}
 
             ---
             {{- end }}
@@ -182,6 +183,7 @@ spec:
               namespace: {{ $ns }}
               annotations:
                 {{ setResourceNameAnnotation (printf "serviceaccount.workloadidentity.k8s.livewyer.io/%s" $spec.forProvider.serviceAccountName) }}
+                iam.gke.io/gcp-service-account: {{ printf "%s@%s.iam.gserviceaccount.com" $id $spec.forProvider.projectId }}
                 {{- range $key, $value := $annotations }}
                 {{ $key }}: "{{ $value }}"
                 {{- end }}
@@ -200,14 +202,13 @@ spec:
                     name: {{ $spec.forProvider.serviceAccountName }}
                     namespace: {{ default $ns $spec.forProvider.serviceAccountNamespace }}
                     annotations:
-                      iam.gke.io/gcp-service-account: {{ $id }}
+                      iam.gke.io/gcp-service-account: {{ printf "%s@%s.iam.gserviceaccount.com" $id $spec.forProvider.projectId }}
                       {{- range $key, $value := $annotations }}
                       {{ $key }}: "{{ $value }}"
                       {{- end }}
                     labels:
                       gcp.livewyer.io/workloadidentity: {{ $id }}
                       workloadidentity.gcp.livewyer.io/serviceaccount: {{ $spec.forProvider.serviceAccountName }}
-                      iam.gke.io/gcp-service-account: {{ $id }}
                       {{- range $key, $value := $labels }}
                       {{ $key }}: "{{ $value }}"
                       {{- end }}
